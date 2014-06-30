@@ -1,0 +1,60 @@
+clc
+clear all
+close all
+
+load('motor_data.mat');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Adattamento valori
+Ri = Rs;
+M0 = 1;
+r = Rs - 0.001;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if strcmp(rotor_type,'internal')
+    R0 = Ri - g;
+    Rm = Ri - g - hm;
+else
+    error 'Motore non supportato'
+end
+
+% Calcolo della componente radiale del vettore 
+% induzione magnetica nel traferro: R0 < r < Ri.
+% Contemplato unicamente il caso di magnetizzazione radiale
+
+Br_comp = zeros(300, 2);
+for n = 1:300
+
+	np = n*p;
+    
+    Br_comp(n, 1) = n;
+    
+    Mn = 2*M0*alfa_p/(n*pi*alfa_p/2)*sin(n*pi*alfa_p/2);	%5.137
+    
+	if np ~= 1		
+        Br_comp(n, 2) = (Mn*np/mir/((np^2) -1))*...
+            ((np - 1) + 2*(Rm/R0)^(np + 1) - (np + 1)*(Rm/R0)^(2*np))/...
+            ((mir + 1)/mir * (1 - (Rm/Ri)^(2*np)) - (mir - 1)/mir * ((R0/Ri)^(2*np) - (Rm/R0)^(2*np)))*...
+            ((r/Ri)^(np -1)*(R0/Ri)^(np +1) + (R0/r)^(np +1));      % 5.62 mod
+	else
+		Br_comp(n, 2) = Mn/(2*mir)*...
+			((R0/Ri)^2 - (Rm/Ri)^2 + (Rm/Ri)^2 * log((R0/Rm)^2))/...
+			((mir +1)/mir*(1 - (Rm/Ri)^2) - (mir -1)/mir*((R0/Ri)^2 - (Rm/R0)^2))*...
+			(1 + (Ri/r)^2);     % 5.57 mod (M1 = Mn(n = 1))
+	end	
+end
+
+cont = 1;
+Br = zeros(length(0:0.001:pi), 2);
+for theta = 0:0.1:pi
+    
+    Br_theta = 0;
+    for n = 1:length(Br_comp)
+        Br_theta = Br_theta + Br_comp(n, 2)*cos(n*p*theta);
+    end
+    Br(cont, :) = [theta, Br_theta];
+    
+    cont = cont +1;    
+end
+
+plot(Br(:,1),Br(:,2),'DisplayName','Br(1:32,1:2)','YDataSource','Br(1:32,1:2)');figure(gcf)
